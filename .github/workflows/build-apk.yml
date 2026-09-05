@@ -17,19 +17,26 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: "17"
 
       - name: Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '8.9'
+          gradle-version: "8.9"
 
       - name: Extrair projeto
-        run: unzip -q WebRadioVemComigo_Android_Projeto-1.zip -d WebRadioVemComigoAndroid
+        run: |
+          unzip -q WebRadioVemComigo_Android_Projeto-1.zip -d WebRadioVemComigoAndroid
 
-      - name: Compilador APK
+      - name: Configurar AndroidX
         working-directory: WebRadioVemComigoAndroid
-        run: gradle assembleDebug
+        run: |
+          echo "android.useAndroidX=true" >> gradle.properties
+          echo "android.enableJetifier=true" >> gradle.properties
+
+      - name: Compilar APK
+        working-directory: WebRadioVemComigoAndroid
+        run: gradle assembleDebug --stacktrace
 
       - name: Guardar APK
         uses: actions/upload-artifact@v4
