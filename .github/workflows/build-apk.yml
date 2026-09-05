@@ -3,7 +3,7 @@ name: Gerar APK
 on:
   workflow_dispatch:
   push:
-    branches: [ "principal" ]
+    branches: ["principal"]
 
 jobs:
   build:
@@ -13,23 +13,23 @@ jobs:
       - name: Baixar projeto
         uses: actions/checkout@v4
 
-      - name: Configurar Java
+      - name: Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      - name: Instalar Gradle
+      - name: Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
 
       - name: Extrair projeto
-        run: unzip -o WebRadioVemComigo_Android_Projeto.zip
+        run: unzip -q WebRadioVemComigo_Android_Projeto.zip -d WebRadioVemComigoAndroid
 
       - name: Compilar APK
         working-directory: WebRadioVemComigoAndroid
-        run: gradle assembleDebug
+        run: ./gradlew assembleDebug
 
       - name: Guardar APK
         uses: actions/upload-artifact@v4
