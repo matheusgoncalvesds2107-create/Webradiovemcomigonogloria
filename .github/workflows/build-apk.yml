@@ -26,18 +26,38 @@ jobs:
           gradle-version: '8.9'
 
       - name: Localizar e extrair projeto
+        shell: bash
         run: |
+          set -e
           rm -rf WebRadioVemComigoAndroid
-          ZIP_FILE="$(find . -maxdepth 1 -type f -iname '*.zip' | head -n 1)"
+          mkdir -p WebRadioVemComigoAndroid
 
-          if [ -z "$ZIP_FILE" ]; then
-            echo "ERRO: nenhum arquivo ZIP foi encontrado na raiz do repositório."
-            ls -la
+          FOUND=""
+          while IFS= read -r -d '' ZIP; do
+            echo "Testando ZIP: $ZIP"
+            if unzip -t "$ZIP" >/dev/null 2>&1; then
+              if unzip -l "$ZIP" | grep -q "app/build.gradle.kts"; then
+                FOUND="$ZIP"
+                break
+              fi
+            fi
+          done < <(find . -maxdepth 1 -type f -iname "*.zip" -print0)
+
+          if [ -z "$FOUND" ]; then
+            echo "ERRO: não encontrei um ZIP Android válido na raiz."
+            echo "Arquivos ZIP encontrados:"
+            find . -maxdepth 1 -type f -iname "*.zip" -print
             exit 1
           fi
 
-          echo "ZIP encontrado: $ZIP_FILE"
-          unzip -q "$ZIP_FILE" -d WebRadioVemComigoAndroid
+          echo "ZIP Android válido escolhido: $FOUND"
+          unzip -q "$FOUND" -d WebRadioVemComigoAndroid
+
+          if [ ! -f "WebRadioVemComigoAndroid/app/build.gradle.kts" ]; then
+            echo "ERRO: app/build.gradle.kts não foi encontrado após a extração."
+            find WebRadioVemComigoAndroid -maxdepth 4 -type f | head -100
+            exit 1
+          fi
 
       - name: Configurar AndroidX
         working-directory: WebRadioVemComigoAndroid
