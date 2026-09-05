@@ -20,15 +20,16 @@ jobs:
           java-version: '17'
 
       - name: Gradle
-  uses: gradle/actions/setup-gradle@v4
-  with:
-    gradle-version: '8.9'
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
 
       - name: Extrair projeto
         run: unzip -q WebRadioVemComigo_Android_Projeto-1.zip -d WebRadioVemComigoAndroid
+
       - name: Compilador APK
-  working-directory: WebRadioVemComigoAndroid
-  run: gradle assembleDebug
+        working-directory: WebRadioVemComigoAndroid
+        run: gradle assembleDebug
 
       - name: Guardar APK
         uses: actions/upload-artifact@v4
