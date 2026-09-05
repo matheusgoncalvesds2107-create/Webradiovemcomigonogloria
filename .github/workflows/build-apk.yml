@@ -25,8 +25,7 @@ jobs:
           gradle-version: '8.9'
 
       - name: Extrair projeto
-        run: unzip -q WebRadioVemComigo_Android_Projeto-1.zip -d WebRadioVemComigoAndroid-d WebRadioVemComigoAndroid
-
+        run: unzip -q WebRadioVemComigo_Android_Projeto-1.zip -d WebRadioVemComigoAndroid
       - name: Compilar APK
         working-directory: WebRadioVemComigoAndroid
         run: ./gradlew assembleDebug
