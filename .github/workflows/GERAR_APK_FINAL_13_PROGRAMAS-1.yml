@@ -1,0 +1,65 @@
+name: GERAR APK FINAL - 13 PROGRAMAS
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar projeto
+        uses: actions/checkout@v4
+
+      - name: Configurar Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Configurar Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Encontrar e extrair projeto final
+        shell: bash
+        run: |
+          set -e
+          ZIP=$(find . -maxdepth 3 -type f -iname '*13_PROGRAMAS*PAINEL_PLAYLISTS*.zip' | head -n 1)
+          if [ -z "$ZIP" ]; then
+            echo "ZIP FINAL NÃO ENCONTRADO"
+            exit 1
+          fi
+          rm -rf build_final
+          mkdir build_final
+          unzip -q "$ZIP" -d build_final
+          SETTINGS=$(find build_final -name settings.gradle.kts -o -name settings.gradle | head -n 1)
+          if [ -z "$SETTINGS" ]; then
+            echo "settings.gradle não encontrado"
+            exit 1
+          fi
+          ROOT=$(dirname "$SETTINGS")
+          echo "ROOT=$ROOT" >> "$GITHUB_ENV"
+
+      - name: Validar projeto
+        shell: bash
+        run: |
+          set -e
+          test -f "$ROOT/app/build.gradle.kts"
+          test -f "$ROOT/app/src/main/java/com/vemcomigo/radio/MainActivity.kt"
+          find "$ROOT/app/src/main/res/raw" -mindepth 1 -maxdepth 1 -type f | wc -l
+          grep -q '13 PROGRAMAS' "$ROOT/app/src/main/java/com/vemcomigo/radio/MainActivity.kt"
+          grep -q 'showPainelLouvores' "$ROOT/app/src/main/java/com/vemcomigo/radio/MainActivity.kt"
+
+      - name: Gerar APK
+        working-directory: ${{ env.ROOT }}
+        shell: bash
+        run: |
+          chmod +x gradlew
+          ./gradlew clean assembleDebug --stacktrace
+
+      - name: Enviar APK final
+        uses: actions/upload-artifact@v4
+        with:
+          name: WebRadioVemComigoNoGloria-APK-FINAL-13-PROGRAMAS
+          path: ${{ env.ROOT }}/app/build/outputs/apk/debug/*.apk
