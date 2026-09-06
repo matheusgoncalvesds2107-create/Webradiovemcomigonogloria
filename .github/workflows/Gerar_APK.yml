@@ -1,0 +1,30 @@
+name: Gerar APK
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar projeto
+        uses: actions/checkout@v4
+      - name: Preparar pacote do app
+        run: |
+          set -e
+          ZIP="WebRadioVemComigoNoGloria_APK.zip"
+          test -f "$ZIP"
+          rm -rf app gradle gradlew gradlew.bat settings.gradle.kts build.gradle.kts gradle.properties 2>/dev/null || true
+          unzip -q "$ZIP" -d .
+          chmod +x gradlew
+      - name: Configurar Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Compilar APK
+        run: ./gradlew :app:assembleDebug --stacktrace
+      - name: Publicar APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: WebRadioVemComigoNoGloria-APK
+          path: app/build/outputs/apk/debug/app-debug.apk
