@@ -1,0 +1,66 @@
+name: GERAR APK NOVO - LAUNCHER PRINCIPAL FINAL
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar projeto
+        uses: actions/checkout@v4
+
+      - name: Configurar Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Configurar Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Encontrar ZIP do projeto
+        shell: bash
+        run: |
+          set -e
+          ZIP=$(find . -maxdepth 3 -type f -iname 'WebRadioVemComigoNoGloria_LAUNCHER_PRINCIPAL_IMAGEM_FINAL.zip' | head -n 1)
+          if [ -z "$ZIP" ]; then
+            echo "ERRO: ZIP FINAL NÃO ENCONTRADO."
+            exit 1
+          fi
+          echo "ZIP encontrado: $ZIP"
+          rm -rf build_final
+          mkdir build_final
+          unzip -q "$ZIP" -d build_final
+          SETTINGS=$(find build_final -type f \( -name settings.gradle.kts -o -name settings.gradle \) | head -n 1)
+          test -n "$SETTINGS"
+          ROOT=$(dirname "$SETTINGS")
+          echo "ROOT=$ROOT" >> "$GITHUB_ENV"
+
+      - name: Validar projeto e launcher
+        shell: bash
+        run: |
+          set -e
+          test -f "$ROOT/app/build.gradle.kts"
+          test -f "$ROOT/app/src/main/AndroidManifest.xml"
+          test -f "$ROOT/app/src/main/java/com/vemcomigo/radio/MainActivity.kt"
+          test -f "$ROOT/app/src/main/res/drawable/launcher_principal.png"
+          grep -q '09:00.*09:30' "$ROOT/app/src/main/java/com/vemcomigo/radio/MainActivity.kt"
+          grep -q 'setImageResource(R.drawable.launcher_principal)' "$ROOT/app/src/main/java/com/vemcomigo/radio/MainActivity.kt"
+          echo "Projeto e launcher validados."
+
+      - name: Gerar APK novo
+        shell: bash
+        run: |
+          set -e
+          cd "$ROOT"
+          gradle clean assembleDebug --stacktrace
+
+      - name: Publicar APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: WebRadioVemComigoNoGloria-APK-LAUNCHER-IMAGEM-FINAL
+          path: ${{ env.ROOT }}/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
