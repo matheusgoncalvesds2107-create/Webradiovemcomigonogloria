@@ -30,7 +30,7 @@ jobs:
         shell: bash
         run: |
           set -e
-          ZIP="WebRadioVemComigoNoGloria_V2.zip"
+          ZIP="WebRadioVemComigoNoGloria_V2_GitHub-1.zip"
           if [ ! -f "$ZIP" ]; then
             echo "ERRO: $ZIP nao foi encontrado na raiz do repositorio."
             exit 1
