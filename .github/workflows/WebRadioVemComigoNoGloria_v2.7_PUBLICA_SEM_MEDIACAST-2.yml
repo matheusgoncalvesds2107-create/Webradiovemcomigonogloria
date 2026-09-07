@@ -1,0 +1,96 @@
+name: Gerar APK v2.7 - PUBLICA SEM MEDIA CAST
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar projeto
+        uses: actions/checkout@v4
+
+      - name: Configurar Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Configurar Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Preparar projeto Android
+        id: android
+        shell: bash
+        run: |
+          set -euo pipefail
+          WORK="$GITHUB_WORKSPACE"
+          PROJECT_DIR=""
+
+          echo "Procurando projeto Android já extraído..."
+          SETTINGS=$(find "$WORK" -type f \( -name 'settings.gradle.kts' -o -name 'settings.gradle' \) -not -path '*/.git/*' -print | head -n 1 || true)
+
+          if [ -n "$SETTINGS" ]; then
+            PROJECT_DIR="$(dirname "$SETTINGS")"
+            echo "Projeto Android encontrado: $PROJECT_DIR"
+          else
+            echo "Projeto não está extraído. Procurando qualquer ZIP v2.7 público..."
+            ZIP=$(find "$WORK" -maxdepth 5 -type f -iname 'WebRadioVemComigoNoGloria_v2.7_PUBLICA_SEM_MEDIACAST*.zip' -not -path '*/.git/*' -print | head -n 1 || true)
+
+            if [ -z "$ZIP" ]; then
+              echo "ERRO: não encontrei o projeto Android nem o ZIP."
+              echo "Arquivos encontrados no repositório:"
+              find "$WORK" -maxdepth 5 -type f -not -path '*/.git/*' | sort | head -300
+              exit 1
+            fi
+
+            echo "ZIP encontrado: $ZIP"
+            rm -rf "$WORK/_android_project"
+            mkdir -p "$WORK/_android_project"
+            unzip -q "$ZIP" -d "$WORK/_android_project"
+
+            SETTINGS=$(find "$WORK/_android_project" -type f \( -name 'settings.gradle.kts' -o -name 'settings.gradle' \) -not -path '*/.git/*' -print | head -n 1 || true)
+            if [ -z "$SETTINGS" ]; then
+              echo "ERRO: o ZIP não contém settings.gradle(.kts)."
+              find "$WORK/_android_project" -maxdepth 6 -type f | sort | head -300
+              exit 1
+            fi
+            PROJECT_DIR="$(dirname "$SETTINGS")"
+            echo "Projeto Android extraído: $PROJECT_DIR"
+          fi
+
+          if [ ! -f "$PROJECT_DIR/settings.gradle.kts" ] && [ ! -f "$PROJECT_DIR/settings.gradle" ]; then
+            echo "ERRO: settings.gradle(.kts) não encontrado em $PROJECT_DIR"
+            exit 1
+          fi
+          if [ ! -f "$PROJECT_DIR/build.gradle.kts" ] && [ ! -f "$PROJECT_DIR/build.gradle" ]; then
+            echo "ERRO: build.gradle(.kts) não encontrado em $PROJECT_DIR"
+            exit 1
+          fi
+          if [ ! -d "$PROJECT_DIR/app" ]; then
+            echo "ERRO: pasta app não encontrada em $PROJECT_DIR"
+            exit 1
+          fi
+
+          echo "Raiz Android final: $PROJECT_DIR"
+          echo "project_dir=$PROJECT_DIR" >> "$GITHUB_OUTPUT"
+
+      - name: Gerar APK v2.7
+        shell: bash
+        run: |
+          set -euo pipefail
+          PROJECT_DIR='${{ steps.android.outputs.project_dir }}'
+          echo "Compilando: $PROJECT_DIR"
+          gradle --no-daemon -p "$PROJECT_DIR" clean assembleDebug --stacktrace
+
+      - name: Publicar APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: WebRadio-v2.7-PUBLICA-SEM-MEDIA-CAST
+          path: ${{ steps.android.outputs.project_dir }}/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
