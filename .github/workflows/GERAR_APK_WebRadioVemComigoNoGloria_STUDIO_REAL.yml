@@ -1,0 +1,129 @@
+name: Gerar APK - Web Rádio Vem Comigo no Glória Studio REAL
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Baixar repositório
+        uses: actions/checkout@v4
+
+      - name: Localizar ou extrair projeto Studio
+        shell: bash
+        run: |
+          set -e
+
+          echo "=== Conteúdo inicial do repositório ==="
+          find . -maxdepth 4 -type f | sort | head -300
+
+          if [ -f "./package.json" ]; then
+            echo "Projeto encontrado na raiz."
+            echo "PROJECT_DIR=." >> "$GITHUB_ENV"
+            exit 0
+          fi
+
+          FOUND="$(find . -type f -name package.json -not -path '*/node_modules/*' | head -n 1 || true)"
+          if [ -n "$FOUND" ]; then
+            DIR="$(dirname "$FOUND")"
+            echo "Projeto encontrado em: $DIR"
+            echo "PROJECT_DIR=${DIR#./}" >> "$GITHUB_ENV"
+            exit 0
+          fi
+
+          ZIP_FILE="$(find . -type f -name '*.zip' -not -path '*/node_modules/*' | head -n 1 || true)"
+          if [ -z "$ZIP_FILE" ]; then
+            echo "::error::Não encontrei package.json nem arquivo ZIP do projeto."
+            exit 1
+          fi
+
+          echo "Extraindo projeto: $ZIP_FILE"
+          rm -rf _studio_project
+          mkdir -p _studio_project
+          unzip -q "$ZIP_FILE" -d _studio_project
+
+          FOUND="$(find _studio_project -type f -name package.json -not -path '*/node_modules/*' | head -n 1 || true)"
+          if [ -z "$FOUND" ]; then
+            echo "::error::O ZIP encontrado não contém package.json."
+            find _studio_project -maxdepth 5 -type f | sort | head -300
+            exit 1
+          fi
+
+          DIR="$(dirname "$FOUND")"
+          echo "Projeto extraído em: $DIR"
+          echo "PROJECT_DIR=$DIR" >> "$GITHUB_ENV"
+
+      - name: Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Instalar SDK Android 35
+        shell: bash
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Conferir projeto
+        shell: bash
+        run: |
+          echo "PROJECT_DIR=$PROJECT_DIR"
+          test -f "$PROJECT_DIR/package.json"
+          test -f "$PROJECT_DIR/android/settings.gradle"
+          test -f "$PROJECT_DIR/android/app/build.gradle"
+          ls -la "$PROJECT_DIR"
+          ls -la "$PROJECT_DIR/android"
+
+      - name: Instalar dependências JavaScript
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: npm install --no-audit --no-fund
+
+      - name: Preparar Gradle 8.10.2
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+          cache-disabled: true
+
+      - name: Conferir configuração Gradle
+        working-directory: ${{ env.PROJECT_DIR }}/android
+        run: |
+          gradle --version
+          echo "=== settings.gradle ==="
+          cat settings.gradle
+          echo "=== app/build.gradle ==="
+          cat app/build.gradle
+
+      - name: Compilar APK
+        working-directory: ${{ env.PROJECT_DIR }}/android
+        run: |
+          gradle assembleDebug \
+            --no-daemon \
+            --stacktrace \
+            --warning-mode all \
+            --refresh-dependencies \
+            --console=plain
+
+      - name: Verificar APK
+        shell: bash
+        run: |
+          APK="$PROJECT_DIR/android/app/build/outputs/apk/debug/app-debug.apk"
+          test -f "$APK"
+          ls -lh "$APK"
+
+      - name: Publicar APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: WebRadioVemComigoNoGloria-Studio-APK
+          path: ${{ env.PROJECT_DIR }}/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
