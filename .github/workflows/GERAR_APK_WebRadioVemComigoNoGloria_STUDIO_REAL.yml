@@ -104,15 +104,28 @@ jobs:
           echo "=== app/build.gradle ==="
           cat app/build.gradle
 
-      - name: Compilar APK
-        working-directory: ${{ env.PROJECT_DIR }}/android
-        run: |
-          gradle assembleDebug \
-            --no-daemon \
-            --stacktrace \
-            --warning-mode all \
-            --refresh-dependencies \
-            --console=plain
+       - name: Compilar APK
+  working-directory: ${{ env.PROJECT_DIR }}/android
+  run: |
+    set -o pipefail
+    gradle assembleDebug \
+      --no-daemon \
+      --stacktrace \
+      --info \
+      --warning-mode all \
+      --refresh-dependencies \
+      --console=plain 2>&1 | tee build.log
+
+- name: Mostrar erro do Manifest
+  if: failure()
+  working-directory: ${{ env.PROJECT_DIR }}/android
+  run: |
+    echo "===== ERRO DO MANIFEST ====="
+    grep -n -E "Manifest merger|Error:|uses-permission|android:exported|attribute|Suggestion" build.log | tail -100 || true
+
+    echo "===== ARQUIVOS DE RELATÓRIO ====="
+    find app/build -type f \( -name "*manifest*" -o -name "*.xml" \) -print 2>/dev/null | head -100 || true
+      
 
       - name: Verificar APK
         shell: bash
