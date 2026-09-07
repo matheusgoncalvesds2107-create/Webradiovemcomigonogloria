@@ -103,8 +103,8 @@ jobs:
           cat settings.gradle
           echo "=== app/build.gradle ==="
           cat app/build.gradle
-
-       - name: Compilar APK
+ 
+      - name: Compilar APK
   working-directory: ${{ env.PROJECT_DIR }}/android
   run: |
     set -o pipefail
@@ -114,29 +114,4 @@ jobs:
       --info \
       --warning-mode all \
       --refresh-dependencies \
-      --console=plain 2>&1 | tee build.log
-
-- name: Mostrar erro do Manifest
-  if: failure()
-  working-directory: ${{ env.PROJECT_DIR }}/android
-  run: |
-    echo "===== ERRO DO MANIFEST ====="
-    grep -n -E "Manifest merger|Error:|uses-permission|android:exported|attribute|Suggestion" build.log | tail -100 || true
-
-    echo "===== ARQUIVOS DE RELATÓRIO ====="
-    find app/build -type f \( -name "*manifest*" -o -name "*.xml" \) -print 2>/dev/null | head -100 || true
-      
-
-      - name: Verificar APK
-        shell: bash
-        run: |
-          APK="$PROJECT_DIR/android/app/build/outputs/apk/debug/app-debug.apk"
-          test -f "$APK"
-          ls -lh "$APK"
-
-      - name: Publicar APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: WebRadioVemComigoNoGloria-Studio-APK
-          path: ${{ env.PROJECT_DIR }}/android/app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: error
+       --console=plain 2>&1 | tee build.log 
